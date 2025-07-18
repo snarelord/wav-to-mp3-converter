@@ -1,0 +1,8 @@
+{
+  "appId": "com.k-jones.wav-to-mp3",
+  "files": ["dist-electron", "dist-react"],
+  "icon": "./desktopIcon.png",
+  "mac": { "target": "dmg" },
+  "linux": { "target": "AppImage", "category": "Utility" },
+  "win": { "target": ["portable", "msi"] }
+}
