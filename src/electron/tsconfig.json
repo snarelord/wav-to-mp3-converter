@@ -4,6 +4,9 @@
     "target": "esnext",
     "module": "nodenext",
     "outDir": "../../dist-electron",
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["main.ts", "preload.cts"]
 }

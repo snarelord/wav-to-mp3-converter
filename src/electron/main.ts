@@ -1,9 +1,13 @@
-import { app, BrowserWindow, dialog } from "electron";
+import { app, BrowserWindow, contextBridge, dialog } from "electron";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { ipcMain } from "electron";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
+import { convertWavToMp3 } from "../utils/audioConversion.js";
+import { getPreloadPath } from "./pathResolver.js";
+import os from "os";
+import { promises as fs } from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,8 +15,13 @@ const __dirname = path.dirname(__filename);
 ffmpeg.setFfmpegPath(ffmpegPath as unknown as string); // check this
 
 function createMainWindow() {
-  const mainWindow = new BrowserWindow({});
-  mainWindow.loadFile(path.join(app.getAppPath(), "/dist-react/index.html"));
+  console.log("Preload path:", path.join(__dirname, "preload.cjs")); // test
+  const mainWindow = new BrowserWindow({
+    webPreferences: {
+      preload: path.join(__dirname, "preload.cjs"),
+    },
+  });
+  mainWindow.loadFile(path.join(app.getAppPath(), "dist-react/index.html"));
 }
 
 app.on("window-all-closed", () => {
@@ -23,6 +32,33 @@ app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
 });
 
-// pick a save path for files
+app.whenReady().then(() => {
+  createMainWindow();
+});
 
-// handle wav to mp3 conversion using ffmpeg etc
+ipcMain.handle("dialog:save", async (_, fileName: string) => {
+  const result = await dialog.showSaveDialog({
+    title: "Save File",
+    defaultPath: fileName,
+    filters: [{ name: "MP3 Files", extensions: ["mp3"] }],
+  });
+
+  return result;
+});
+
+ipcMain.handle("convert-wav-to-mp3", async (_event, inputPath: string, outputPath: string) => {
+  try {
+    const result = await convertWavToMp3(inputPath, outputPath);
+    return result;
+  } catch (err) {
+    console.error("Conversion error:", err);
+    throw err;
+  }
+});
+
+ipcMain.handle("save-temp-file", async (_, fileData: ArrayBuffer, fileName: string) => {
+  const tempDir = os.tmpdir();
+  const tempPath = path.join(tempDir, fileName);
+  await fs.writeFile(tempPath, Buffer.from(fileData));
+  return tempPath;
+});

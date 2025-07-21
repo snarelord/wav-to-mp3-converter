@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./App.module.css";
 
 declare global {
   interface Window {
     electronAPI?: {
+      saveFileTemporarily(arrayBuffer: ArrayBuffer, name: string): unknown;
       openFileDialog: () => Promise<string[]>;
       pickSavePath: (defaultName: string) => Promise<string | undefined>;
       convert: (inputPath: string, savePath: string) => Promise<void>;
@@ -12,6 +13,10 @@ declare global {
 }
 
 const App: React.FC = () => {
+  useEffect(() => {
+    console.log("electronAPI available:", !!window.electronAPI);
+  }, []);
+
   const [files, setFiles] = useState<File[]>([]);
 
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
@@ -31,21 +36,42 @@ const App: React.FC = () => {
       return;
     }
 
+    if (!window.electronAPI?.convert) {
+      alert("Electron API not available.");
+      return;
+    }
+
+    // const results = await Promise.allSettled(
+    //   files.map(async (file) => {
+    //     const savePath = await window.electronAPI.pickSavePath(file.name.replace(/\.wav$/i, ".mp3"));
+    //     if (!savePath) {
+    //       throw new Error("Save path not selected");
+    //     }
+    //     return window.electronAPI.convert(file.path, savePath);
+    //   })
+    // );
     const results = await Promise.allSettled(
       files.map(async (file) => {
-        const inputPath = file.path;
+        // Read the file as ArrayBuffer since file.path doesn't exist for File objects
+        const arrayBuffer = await file.arrayBuffer();
 
-        const savePath = await window.electronAPI?.pickSavePath(file.name);
+        // You'll need to add this method to your preload script
+        const tempPath = (await window.electronAPI.saveFileTemporarily(arrayBuffer, file.name)) as string;
+
+        const savePath = await window.electronAPI.pickSavePath(file.name.replace(/\.wav$/i, ".mp3"));
         if (!savePath) {
-          throw new Error("Save path is required.");
+          throw new Error("Save path not selected");
         }
-        return await window.electronAPI?.convert(inputPath, savePath);
+        return window.electronAPI.convert(tempPath, savePath);
       })
     );
 
     const summary = results.map((res, i) => {
-      if (res.status === "fulfilled") return `${files[i].name} converted successfully`;
-      else return `${files[i].name} failed: ${res.reason}`;
+      if (res.status === "fulfilled") {
+        return `${files[i].name} converted successfully.`;
+      } else {
+        return `${files[i].name} failed: ${res.reason}`;
+      }
     });
 
     alert(summary.join("\n"));
