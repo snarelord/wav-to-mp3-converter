@@ -22,7 +22,7 @@ This lightweight, standalone app makes WAV to MP3 conversion as easy as drag, dr
 
 🚀 **Getting Started:**
 
-1. ***
+1. COMING SOON
 
 💡 **Built with DJs in mind** — whether you're prepping a set or organising your sample library, this tool just works.
 
