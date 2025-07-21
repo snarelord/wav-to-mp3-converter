@@ -41,21 +41,9 @@ const App: React.FC = () => {
       return;
     }
 
-    // const results = await Promise.allSettled(
-    //   files.map(async (file) => {
-    //     const savePath = await window.electronAPI.pickSavePath(file.name.replace(/\.wav$/i, ".mp3"));
-    //     if (!savePath) {
-    //       throw new Error("Save path not selected");
-    //     }
-    //     return window.electronAPI.convert(file.path, savePath);
-    //   })
-    // );
     const results = await Promise.allSettled(
       files.map(async (file) => {
-        // Read the file as ArrayBuffer since file.path doesn't exist for File objects
         const arrayBuffer = await file.arrayBuffer();
-
-        // You'll need to add this method to your preload script
         const tempPath = (await window.electronAPI.saveFileTemporarily(arrayBuffer, file.name)) as string;
 
         const savePath = await window.electronAPI.pickSavePath(file.name.replace(/\.wav$/i, ".mp3"));

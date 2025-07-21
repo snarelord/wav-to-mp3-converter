@@ -5,17 +5,16 @@ import { ipcMain } from "electron";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
 import { convertWavToMp3 } from "../utils/audioConversion.js";
-import { getPreloadPath } from "./pathResolver.js";
 import os from "os";
 import { promises as fs } from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-ffmpeg.setFfmpegPath(ffmpegPath as unknown as string); // check this
+ffmpeg.setFfmpegPath(ffmpegPath as unknown as string);
 
 function createMainWindow() {
-  console.log("Preload path:", path.join(__dirname, "preload.cjs")); // test
+  console.log("Preload path:", path.join(__dirname, "preload.cjs"));
   const mainWindow = new BrowserWindow({
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
