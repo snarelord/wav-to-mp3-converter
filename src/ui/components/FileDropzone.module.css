@@ -1,0 +1,109 @@
+/* Clean card-based dropzone with soft shadows */
+.dropzone {
+  background: #f7f9fc;
+  border: 2px solid #e3e8ef;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  text-align: center;
+  transition: all 200ms ease;
+  cursor: pointer;
+}
+
+.dropzone:hover {
+  background: #f0f7ff;
+  border-color: #0061ff;
+  box-shadow: 0 2px 8px rgba(0, 97, 255, 0.08);
+}
+
+/* Active drag state with blue accent */
+.dropzoneActive {
+  background: #f0f7ff;
+  border-color: #0061ff;
+  box-shadow: 0 0 0 3px rgba(0, 97, 255, 0.1);
+}
+
+/* Disabled state */
+.dropzoneDisabled {
+  background: #f5f5f5;
+  border-color: #d1d5db;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dropzoneDisabled:hover {
+  background: #f5f5f5;
+  border-color: #d1d5db;
+  box-shadow: none;
+}
+
+.dropzoneContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* Modern SVG icon styling */
+.uploadIcon {
+  width: 48px;
+  height: 48px;
+  color: #637381;
+  margin-bottom: 0.5rem;
+}
+
+.dropzoneTitle {
+  font-size: 1rem;
+  color: #1e2329;
+  margin: 0;
+  font-weight: 500;
+}
+
+.dropzoneDivider {
+  font-size: 0.875rem;
+  color: #637381;
+  margin: 0;
+}
+
+.fileLimitText {
+  font-size: 0.8125rem;
+  color: #9ca3af;
+  margin: 0.5rem 0 0 0;
+  font-style: italic;
+}
+
+/* Primary button with Dropbox blue */
+.fileInputLabel {
+  background: #0061ff;
+  color: white;
+  padding: 0.625rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  transition: all 200ms ease;
+  border: none;
+}
+
+.fileInputLabel:hover {
+  background: #0052d9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 97, 255, 0.2);
+}
+
+.fileInputLabelDisabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.fileInputLabelDisabled:hover {
+  background: #9ca3af;
+  transform: none;
+  box-shadow: none;
+}
+
+.fileInput {
+  display: none;
+}

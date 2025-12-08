@@ -1,8 +1,37 @@
 {
   "appId": "com.k-jones.wav-to-mp3",
-  "files": ["dist-electron", "dist-react"],
+  "files": ["dist-electron/**/*", "dist-react/**/*"],
   "icon": "./desktopIcon.png",
-  "mac": { "target": "dmg" },
-  "linux": { "target": "AppImage", "category": "Utility" },
-  "win": { "target": ["portable", "msi"] }
+  "directories": {
+    "output": "dist"
+  },
+  "extraResources": [
+    {
+      "from": "node_modules/ffmpeg-static/ffmpeg",
+      "to": "ffmpeg"
+    }
+  ],
+  "mac": {
+    "target": {
+      "target": "dmg",
+      "arch": ["arm64", "x64"]
+    },
+    "minimumSystemVersion": "10.15.0",
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "./entitlements.plist",
+    "entitlementsInherit": "./entitlements.plist"
+  },
+  "linux": {
+    "target": "AppImage",
+    "category": "AudioVideo"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ]
+  }
 }

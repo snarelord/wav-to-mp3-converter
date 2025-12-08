@@ -11,7 +11,20 @@ import { promises as fs } from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-ffmpeg.setFfmpegPath(ffmpegPath as unknown as string);
+// fix FFMPEG path for packaged app
+function getFFmpegPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "ffmpeg");
+  } else {
+    // in development, use ffmpeg-static path
+    return ffmpegPath as unknown as string;
+  }
+}
+
+const resolvedFFmpegPath = getFFmpegPath();
+// @ts-ignore
+ffmpeg.setFfmpegPath(resolvedFFmpegPath);
+console.log("Using ffmpeg binary at:", resolvedFFmpegPath);
 
 function createMainWindow() {
   console.log("Preload path:", path.join(__dirname, "preload.cjs"));
@@ -45,6 +58,16 @@ ipcMain.handle("dialog:save", async (_, fileName: string) => {
   return result;
 });
 
+ipcMain.handle("dialog:save-zip", async (_, fileName: string) => {
+  const result = await dialog.showSaveDialog({
+    title: "Save ZIP Archive",
+    defaultPath: fileName,
+    filters: [{ name: "ZIP Archives", extensions: ["zip"] }],
+  });
+
+  return result;
+});
+
 ipcMain.handle("convert-wav-to-mp3", async (_event, inputPath: string, outputPath: string) => {
   try {
     const result = await convertWavToMp3(inputPath, outputPath);
@@ -55,9 +78,72 @@ ipcMain.handle("convert-wav-to-mp3", async (_event, inputPath: string, outputPat
   }
 });
 
+ipcMain.handle(
+  "convert-multiple-files",
+  async (_event, files: Array<{ data: ArrayBuffer; name: string }>, bitrate: number = 320) => {
+    try {
+      const batchId = Date.now().toString();
+      const tempDir = path.join(os.tmpdir(), `wav-converter-${batchId}`);
+      const outputDir = path.join(tempDir, "converted");
+
+      await fs.mkdir(tempDir, { recursive: true });
+      await fs.mkdir(outputDir, { recursive: true });
+
+      const inputFiles = [];
+      for (const file of files) {
+        const tempPath = path.join(tempDir, file.name);
+        await fs.writeFile(tempPath, Buffer.from(file.data));
+        inputFiles.push({ path: tempPath, name: file.name });
+      }
+
+      const { convertMultipleFiles } = await import("../utils/audioConversion.js");
+      const results = await convertMultipleFiles(inputFiles, outputDir, { bitrate });
+
+      const successfulConversions = results.filter((r) => r.success);
+
+      if (successfulConversions.length === 0) {
+        throw new Error("No files were converted successfully");
+      }
+
+      if (successfulConversions.length === 1) {
+        return {
+          type: "single",
+          path: successfulConversions[0].outputPath,
+          results,
+        };
+      } else {
+        const { createZipFromFiles } = await import("../utils/audioConversion.js");
+        const zipPath = path.join(tempDir, `converted-files-${batchId}.zip`);
+        const filePaths = successfulConversions.map((r) => r.outputPath);
+
+        await createZipFromFiles(filePaths, zipPath);
+
+        return {
+          type: "zip",
+          path: zipPath,
+          results,
+        };
+      }
+    } catch (err) {
+      console.error("Batch conversion error:", err);
+      throw err;
+    }
+  }
+);
+
 ipcMain.handle("save-temp-file", async (_, fileData: ArrayBuffer, fileName: string) => {
   const tempDir = os.tmpdir();
   const tempPath = path.join(tempDir, fileName);
   await fs.writeFile(tempPath, Buffer.from(fileData));
   return tempPath;
+});
+
+ipcMain.handle("copy-file-to-destination", async (_, sourcePath: string, destinationPath: string) => {
+  try {
+    await fs.copyFile(sourcePath, destinationPath);
+    return destinationPath;
+  } catch (err) {
+    console.error("File copy error:", err);
+    throw err;
+  }
 });
