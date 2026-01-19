@@ -8,16 +8,3 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>
 );
-
-// Extend the Window interface to include ipcRenderer
-declare global {
-  interface Window {
-    ipcRenderer: {
-      on: (channel: string, listener: (event: Electron.IpcRendererEvent, ...args: any[]) => void) => void;
-    };
-  }
-}
-
-window.ipcRenderer.on("main-process-message", (_event, message) => {
-  console.log(message);
-});

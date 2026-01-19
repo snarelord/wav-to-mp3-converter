@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
+import path from "path";
+import toast from "react-hot-toast";
+import { ConversionOptions, convertWavToMp3 } from "../utils/audioConversion";
 
-export const MAX_FILES = 20; // max number of files that can be processed at once
+export const MAX_FILES = 10;
 
 interface ConversionResult {
   success: boolean;
@@ -52,12 +55,12 @@ export const useFileConversion = () => {
 
   const handleConvert = async () => {
     if (files.length === 0) {
-      alert("Please select at least one WAV file to convert.");
+      toast.error("Please select at least one WAV file to convert.");
       return;
     }
 
     if (!window.electronAPI?.convertMultiple) {
-      alert("Electron API not available.");
+      toast.error("Electron API not available.");
       return;
     }
 
@@ -83,7 +86,7 @@ export const useFileConversion = () => {
 
         if (savePath && window.electronAPI.copyFileToDestination) {
           await window.electronAPI.copyFileToDestination(batchResult.path, savePath);
-          alert(`File converted and saved to: ${savePath}`);
+          toast.success(`File converted and saved to: ${savePath}`);
         }
       } else {
         const zipName = `converted-files-${new Date().toISOString().split("T")[0]}.zip`;
@@ -91,16 +94,16 @@ export const useFileConversion = () => {
 
         if (savePath && window.electronAPI.copyFileToDestination) {
           await window.electronAPI.copyFileToDestination(batchResult.path, savePath);
-          alert(`${successCount} files converted and saved as ZIP to: ${savePath}`);
+          toast.success(`${successCount} files converted and saved as ZIP to: ${savePath}`);
         }
       }
 
       setLastConversionSuccess(true);
       setCompletedCount(successCount);
-      setFiles([]); // Clear files after successful conversion
+      setFiles([]);
     } catch (error) {
       console.error("Conversion error:", error);
-      alert(`Conversion failed: ${error}`);
+      toast.error(`Conversion failed: ${error}`);
       setLastConversionSuccess(false);
     } finally {
       setIsConverting(false);

@@ -13,7 +13,7 @@ interface FileListProps {
   onRemoveFile: (index: number) => void;
 }
 
-const FileList: React.FC<FileListProps> = ({
+export default function FileList({
   files,
   maxFiles,
   isConverting,
@@ -22,12 +22,12 @@ const FileList: React.FC<FileListProps> = ({
   onClearAll,
   onConvert,
   onRemoveFile,
-}) => {
-  const formatFileSize = (bytes: number): string => {
+}: FileListProps) {
+  function formatFileSize(bytes: number): string {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  };
+  }
 
   if (files.length === 0) {
     return null;
@@ -37,7 +37,7 @@ const FileList: React.FC<FileListProps> = ({
     <div className={styles.fileList}>
       <div className={styles.fileListHeader}>
         <h3 className={`${styles.fileListTitle} ${files.length >= maxFiles * 0.8 ? styles.approachingLimit : ""}`}>
-          {files.length} of {maxFiles} {files.length === 1 ? "file" : "files"} selected
+          {files.length} of {maxFiles} {files.length === 1 ? "file(s)" : "files"} selected
           {lastConversionSuccess && <span className={styles.completedBadge}>✓ {completedCount} completed</span>}
           {files.length >= maxFiles && <span className={styles.limitReached}>⚠️ Limit reached</span>}
         </h3>
@@ -87,6 +87,4 @@ const FileList: React.FC<FileListProps> = ({
       )}
     </div>
   );
-};
-
-export default FileList;
+}

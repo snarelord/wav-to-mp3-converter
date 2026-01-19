@@ -4,7 +4,7 @@ import path from "node:path";
 import { ipcMain } from "electron";
 import ffmpeg from "fluent-ffmpeg";
 import ffmpegPath from "ffmpeg-static";
-import { convertWavToMp3 } from "../utils/audioConversion.js";
+import { convertAudioToMp3 } from "../utils/audioConversion.js"; // Changed from convertWavToMp3
 import os from "os";
 import { promises as fs } from "fs";
 
@@ -68,9 +68,21 @@ ipcMain.handle("dialog:save-zip", async (_, fileName: string) => {
   return result;
 });
 
+// Updated handler name and function call
+ipcMain.handle("convert-audio-to-mp3", async (_event, inputPath: string, outputPath: string) => {
+  try {
+    const result = await convertAudioToMp3(inputPath, outputPath);
+    return result;
+  } catch (err) {
+    console.error("Conversion error:", err);
+    throw err;
+  }
+});
+
+// Keep backward compatibility (optional, but recommended)
 ipcMain.handle("convert-wav-to-mp3", async (_event, inputPath: string, outputPath: string) => {
   try {
-    const result = await convertWavToMp3(inputPath, outputPath);
+    const result = await convertAudioToMp3(inputPath, outputPath);
     return result;
   } catch (err) {
     console.error("Conversion error:", err);
@@ -82,8 +94,14 @@ ipcMain.handle(
   "convert-multiple-files",
   async (_event, files: Array<{ data: ArrayBuffer; name: string }>, bitrate: number = 320) => {
     try {
-      const batchId = Date.now().toString();
-      const tempDir = path.join(os.tmpdir(), `wav-converter-${batchId}`);
+      const now = new Date();
+      const batchId = `${now.getDate().toString().padStart(2, "0")}${(now.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}-${now.getHours().toString().padStart(2, "0")}${now
+        .getMinutes()
+        .toString()
+        .padStart(2, "0")}${now.getSeconds().toString().padStart(2, "0")}`;
+      const tempDir = path.join(os.tmpdir(), `audio-converter-${batchId}`); // Changed from wav-converter
       const outputDir = path.join(tempDir, "converted");
 
       await fs.mkdir(tempDir, { recursive: true });
@@ -114,7 +132,9 @@ ipcMain.handle(
       } else {
         const { createZipFromFiles } = await import("../utils/audioConversion.js");
         const zipPath = path.join(tempDir, `converted-files-${batchId}.zip`);
-        const filePaths = successfulConversions.map((r) => r.outputPath);
+        const filePaths = successfulConversions
+          .map((r) => r.outputPath)
+          .filter((path): path is string => path !== undefined);
 
         await createZipFromFiles(filePaths, zipPath);
 

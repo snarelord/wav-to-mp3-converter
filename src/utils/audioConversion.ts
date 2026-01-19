@@ -5,7 +5,25 @@ import ffmpegPath from "ffmpeg-static";
 import archiver from "archiver";
 import { promises as fs } from "fs";
 import { createWriteStream } from "fs";
-import os from "os";
+
+const FORMAT_PRIORITY: Record<string, number> = {
+  ".wav": 1,
+  ".aiff": 2,
+  ".aif": 2,
+  ".flac": 3,
+  ".m4a": 4,
+  ".aac": 5,
+  ".ogg": 6,
+};
+
+function getFileExtension(filename: string): string {
+  return filename.toLowerCase().substring(filename.lastIndexOf("."));
+}
+
+function getFormatPriority(filename: string): number {
+  const ext = getFileExtension(filename);
+  return FORMAT_PRIORITY[ext] || 99;
+}
 
 // Ensure FFMPEG path is set correctly for both dev and production
 function getFFmpegPath(): string {
@@ -19,46 +37,41 @@ function getFFmpegPath(): string {
 // Set FFMPEG path when module loads
 ffmpeg.setFfmpegPath(getFFmpegPath());
 
-function isWavFile(wavFilename: string) {
-  const ext = path.extname(wavFilename);
-  return ext === ".wav";
+// function isWavFile(wavFilename: string) {
+//   const ext = path.extname(wavFilename);
+//   return ext === ".wav";
+// }
+
+function isSupportedAudioFile(filename: string): boolean {
+  const ext = getFileExtension(filename);
+  return ext in FORMAT_PRIORITY;
 }
 
 export interface ConversionOptions {
   bitrate?: number;
   quality?: number;
-  onProgress?: (progress: number) => void;
+  onProgress?: (progress: number, total: number) => void;
 }
 
 export interface ConversionResult {
   success: boolean;
-  outputPath: string;
-  originalName: string;
+  outputPath?: string;
+  inputFile: string;
   error?: string;
 }
 
-export function convertWavToMp3(
-  wavFilename: string,
-  outputPath: string,
-  options: ConversionOptions = {}
-): Promise<string> {
+export function convertAudioToMp3(inputFilename: string, outputPath: string, bitrate: number = 320): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (!isWavFile(wavFilename)) {
-      return reject(new Error("Not a WAV file"));
+    if (!isSupportedAudioFile(inputFilename)) {
+      const ext = getFileExtension(inputFilename);
+      return reject(new Error(`Unsupported audio format: ${ext}`));
     }
 
-    const { bitrate = 320, quality = 2, onProgress } = options;
-
-    ffmpeg(wavFilename)
+    ffmpeg(inputFilename)
       .audioBitrate(bitrate)
-      .audioQuality(quality)
+      .audioCodec("libmp3lame") // Explicitly set MP3 codec
       .format("mp3")
       .on("error", (err) => reject(err))
-      .on("progress", (progress) => {
-        if (onProgress && progress.percent) {
-          onProgress(Math.round(progress.percent));
-        }
-      })
       .on("end", () => resolve(outputPath))
       .save(outputPath);
   });
@@ -69,27 +82,39 @@ export async function convertMultipleFiles(
   outputDir: string,
   options: ConversionOptions = {}
 ): Promise<ConversionResult[]> {
+  const { bitrate = 320, onProgress } = options;
+
+  const sortedFiles = [...inputFiles].sort((a, b) => {
+    return getFormatPriority(a.name) - getFormatPriority(b.name);
+  });
+
   const results: ConversionResult[] = [];
+  let completed = 0;
 
-  for (const file of inputFiles) {
+  for (const file of sortedFiles) {
     try {
-      const outputFileName = file.name.replace(/\.wav$/i, ".mp3");
-      const outputPath = path.join(outputDir, outputFileName);
+      const ext = getFileExtension(file.name);
+      const baseName = path.basename(file.name, ext);
+      const outputPath = path.join(outputDir, `${baseName}.mp3`);
 
-      await convertWavToMp3(file.path, outputPath, options);
+      await convertAudioToMp3(file.path, outputPath, bitrate);
 
       results.push({
-        success: true,
+        inputFile: file.name,
         outputPath,
-        originalName: file.name,
+        success: true,
       });
     } catch (error) {
       results.push({
+        inputFile: file.name,
         success: false,
-        outputPath: "",
-        originalName: file.name,
         error: error instanceof Error ? error.message : "Unknown error",
       });
+    }
+
+    completed++;
+    if (onProgress) {
+      onProgress(completed, sortedFiles.length);
     }
   }
 
@@ -114,3 +139,5 @@ export async function createZipFromFiles(filePaths: string[], zipPath: string): 
     archive.finalize();
   });
 }
+
+export const convertWavToMp3 = convertAudioToMp3;

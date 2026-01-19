@@ -1,5 +1,6 @@
 import type React from "react";
 import { useState } from "react";
+import toast from "react-hot-toast";
 import styles from "./FileDropzone.module.css";
 
 interface FileDropzoneProps {
@@ -9,36 +10,60 @@ interface FileDropzoneProps {
   disabled?: boolean;
 }
 
-const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesAdded, maxFiles, currentFileCount, disabled = false }) => {
+const ACCEPTED_EXTENSIONS = [".wav", ".aif", ".aiff", ".flac", ".m4a", ".aac", ".ogg"];
+
+export default function FileDropzone({
+  onFilesAdded,
+  maxFiles,
+  currentFileCount,
+  disabled = false,
+}: FileDropzoneProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
-  const validateAndProcessFiles = (newFiles: File[]) => {
-    const wavFiles = Array.from(newFiles).filter((file) => file.name.toLowerCase().endsWith(".wav"));
+  function validateFile(file: File): boolean {
+    const extension = file.name.toLowerCase().substring(file.name.lastIndexOf("."));
 
-    if (wavFiles.length === 0) {
-      alert("Please select only WAV files.");
+    if (!ACCEPTED_EXTENSIONS.includes(extension)) {
+      toast.error(`${file.name}: Unsupported format. Accepted: ${ACCEPTED_EXTENSIONS.join(", ")}`);
+      return false;
+    }
+
+    const maxSize = 200 * 1024 * 1024; // 200MB
+    if (file.size > maxSize) {
+      toast.error(`${file.name}: File too large (max 200MB)`);
+      return false;
+    }
+
+    return true;
+  }
+
+  function validateAndProcessFiles(newFiles: File[]) {
+    const validFiles = Array.from(newFiles).filter(validateFile);
+
+    if (validFiles.length === 0) {
+      toast.error("No valid audio files found. Please select WAV, FLAC, AIFF, M4A, AAC, or OGG files.");
       return;
     }
 
-    const newTotal = currentFileCount + wavFiles.length;
+    const newTotal = currentFileCount + validFiles.length;
     if (newTotal > maxFiles) {
       const allowedCount = maxFiles - currentFileCount;
       if (allowedCount > 0) {
-        alert(
+        toast.error(
           `You can only process up to ${maxFiles} files at once. Adding ${allowedCount} files (${
-            wavFiles.length - allowedCount
+            validFiles.length - allowedCount
           } files ignored).`
         );
-        onFilesAdded(wavFiles.slice(0, allowedCount));
+        onFilesAdded(validFiles.slice(0, allowedCount));
       } else {
-        alert(`You already have ${maxFiles} files selected. Please clear some files before adding more.`);
+        toast.error(`You already have ${maxFiles} files selected. Please clear some files before adding more.`);
       }
     } else {
-      onFilesAdded(wavFiles);
+      onFilesAdded(validFiles);
     }
-  };
+  }
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+  function handleDrop(event: React.DragEvent<HTMLDivElement>) {
     event.preventDefault();
     setIsDragOver(false);
 
@@ -46,9 +71,9 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesAdded, maxFiles, cur
 
     const droppedFiles = Array.from(event.dataTransfer.files);
     validateAndProcessFiles(droppedFiles);
-  };
+  }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  function handleFileSelect(event: React.ChangeEvent<HTMLInputElement>) {
     if (disabled) return;
 
     const selectedFiles = Array.from(event.target.files ?? []);
@@ -56,21 +81,21 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesAdded, maxFiles, cur
 
     // Clear the input so the same files can be selected again
     event.target.value = "";
-  };
+  }
 
-  const handleDragOver = (e: React.DragEvent) => {
+  function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
     if (!disabled) {
       setIsDragOver(true);
     }
-  };
+  }
 
-  const handleDragLeave = (e: React.DragEvent) => {
+  function handleDragLeave(e: React.DragEvent) {
     // Only reset if leaving the dropzone itself, not child elements
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
       setIsDragOver(false);
     }
-  };
+  }
 
   return (
     <div
@@ -85,7 +110,7 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesAdded, maxFiles, cur
       onDragEnd={() => setIsDragOver(false)}
       role="button"
       tabIndex={disabled ? -1 : 0}
-      aria-label="Drag and drop WAV files here or click to select files"
+      aria-label="Drag and drop audio files here or click to select files"
     >
       <div className={styles.dropzoneContent}>
         <svg className={styles.uploadIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -94,7 +119,7 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesAdded, maxFiles, cur
           <line x1="12" y1="12" x2="12" y2="21" />
         </svg>
 
-        <p className={styles.dropzoneTitle}>Drag and drop your WAV files here</p>
+        <p className={styles.dropzoneTitle}>Drag and drop your audio files here</p>
 
         <p className={styles.dropzoneDivider}>or</p>
 
@@ -102,7 +127,7 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesAdded, maxFiles, cur
           <input
             className={styles.fileInput}
             type="file"
-            accept=".wav"
+            accept=".wav,.aif,.aiff,.flac,.m4a,.aac,.ogg"
             multiple
             onChange={handleFileSelect}
             disabled={disabled}
@@ -111,9 +136,8 @@ const FileDropzone: React.FC<FileDropzoneProps> = ({ onFilesAdded, maxFiles, cur
         </label>
 
         <p className={styles.fileLimitText}>Maximum {maxFiles} files at once</p>
+        <p className={styles.formatText}>Supports: WAV, FLAC, AIFF, M4A, AAC, OGG</p>
       </div>
     </div>
   );
-};
-
-export default FileDropzone;
+}
